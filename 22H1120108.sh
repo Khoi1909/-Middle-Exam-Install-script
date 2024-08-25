@@ -1,0 +1,164 @@
+#!/bin/bash
+#!/bin/zsh
+# Kiểm tra hệ điều hành
+check_os() {
+    if [ -f /etc/debian_version ]; then
+        OS="debian"
+    elif [ -f /etc/arch-release ]; then
+        OS="arch"
+    else
+        echo "Hệ điều hành không được hỗ trợ."
+        exit 1
+    fi
+}
+
+# Cài đặt Apache
+install_apache() {
+    echo "Cài đặt Apache..."
+    if [ "$OS" == "debian" ]; then
+        sudo apt update
+        sudo apt install -y apache2
+        sudo systemctl start apache2
+        sudo systemctl enable apache2
+    elif [ "$OS" == "arch" ]; then
+        sudo pacman -Syu --noconfirm apache
+        sudo systemctl start httpd
+        sudo systemctl enable httpd
+    fi
+}
+
+# Cài đặt PHP
+install_php() {
+    echo "Cài đặt PHP..."
+    if [ "$OS" == "debian" ]; then
+        sudo apt install -y php libapache2-mod-php php-mysql
+        sudo systemctl restart apache2
+    elif [ "$OS" == "arch" ]; then
+        sudo pacman -S --noconfirm php php-apache
+        sudo sed -i 's/#LoadModule mpm_prefork_module/LoadModule mpm_prefork_module/' /etc/httpd/conf/httpd.conf
+        sudo sed -i 's/#LoadModule php_module/LoadModule php_module/' /etc/httpd/conf/httpd.conf
+        sudo sed -i 's/#Include conf\/extra\/php_module.conf/Include conf\/extra\/php_module.conf/' /etc/httpd/conf/httpd.conf
+        sudo systemctl restart httpd
+    fi
+}
+
+# Cài đặt MariaDB/MySQL
+install_mariadb() {
+    echo "Cài đặt MariaDB..."
+    if [ "$OS" == "debian" ]; then
+        sudo apt install -y mariadb-server mariadb-client
+        sudo systemctl start mariadb
+        sudo systemctl enable mariadb
+    elif [ "$OS" == "arch" ]; then
+        sudo pacman -S --noconfirm mariadb
+        sudo mysql_install_db --user=mysql --basedir=/usr --datadir=/var/lib/mysql
+        sudo systemctl start mariadb
+        sudo systemctl enable mariadb
+    fi
+
+    echo "Thiết lập mật khẩu root cho MariaDB..."
+    sudo mysql_secure_installation
+}
+
+# Cấu hình Virtual Host
+configure_virtualhost() {
+    echo "Cấu hình Virtual Host cho $1..."
+    if [ "$OS" == "debian" ]; then
+        sudo mkdir -p /var/www/$1/public_html
+        sudo chown -R $USER:$USER /var/www/$1/public_html
+
+        cat <<EOL | sudo tee /etc/apache2/sites-available/$1.conf
+<VirtualHost *:80>
+    ServerAdmin admin@$1
+    DocumentRoot "/var/www/$1/public_html"
+    ServerName $1
+    ServerAlias www.$1
+    ErrorLog "\${APACHE_LOG_DIR}/$1-error.log"
+    CustomLog "\${APACHE_LOG_DIR}/$1-access.log" combined
+</VirtualHost>
+EOL
+
+        sudo a2ensite $1.conf
+        sudo systemctl restart apache2
+    elif [ "$OS" == "arch" ]; then
+        sudo mkdir -p /srv/http/$1/public_html
+        sudo chown -R $USER:$USER /srv/http/$1/public_html
+
+        cat <<EOL | sudo tee /etc/httpd/conf/extra/$1.conf
+<VirtualHost *:80>
+    ServerAdmin admin@$1
+    DocumentRoot "/srv/http/$1/public_html"
+    ServerName $1
+    ServerAlias www.$1
+    ErrorLog "/var/log/httpd/$1-error_log"
+    CustomLog "/var/log/httpd/$1-access_log" common
+</VirtualHost>
+EOL
+
+        echo "Include conf/extra/$1.conf" | sudo tee -a /etc/httpd/conf/httpd.conf
+        sudo systemctl restart httpd
+    fi
+}
+
+# Cài đặt Wordpress
+install_wordpress() {
+    echo "Cài đặt Wordpress cho $1..."
+    if [ "$OS" == "debian" ]; then
+        cd /var/www/$1/public_html
+    elif [ "$OS" == "arch" ]; then
+        cd /srv/http/$1/public_html
+    fi
+    wget https://wordpress.org/latest.tar.gz
+    tar -xvzf latest.tar.gz --strip-components=1
+    rm latest.tar.gz
+
+    echo "Tạo database cho Wordpress..."
+    DB_NAME=$(echo $1 | tr . _)
+    sudo mysql -e "CREATE DATABASE ${DB_NAME};"
+    sudo mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO 'wp_user'@'localhost' IDENTIFIED BY 'yourpassword';"
+    sudo mysql -e "FLUSH PRIVILEGES;"
+
+    cp wp-config-sample.php wp-config.php
+    sed -i "s/database_name_here/$DB_NAME/" wp-config.php
+    sed -i "s/username_here/wp_user/" wp-config.php
+    sed -i "s/password_here/yourpassword/" wp-config.php
+}
+
+#Thêm host vào trong /etc/hosts
+add_host() {
+    if grep -q "$domain" /etc/hosts; then
+        echo "Tên miền $domain đã tồn tại trong /etc/hosts."
+    else
+        # Thêm tên miền vào /etc/hosts
+        echo "$ip    $domain" | sudo tee -a /etc/hosts > /dev/null
+        echo "Tên miền $domain đã được thêm vào /etc/hosts với địa chỉ IP $ip."
+    fi
+}
+#Thêm ServerName vào apache2.conf
+add_ServerName() {
+    apache2_conf="/etc/apache2/apache2.conf"
+
+    if grep -q "ServerName $domain" "$apache2_conf"; then
+        echo "ServerName $domain đã tồn tại trong $apache2_conf."
+    else
+        echo "ServerName $domain" | sudo tee -a "$apache2_conf" > /dev/null
+        echo "ServerName $domain đã được thêm vào $apache2_conf."
+    fi
+    
+    sudo systemctl restart apache2
+
+}
+# Bắt đầu script
+check_os
+read -p "Vui lòng nhập tên miền: " domain
+read -p "Vui lòng nhập địa chỉ IP (Không nhập -> mặc định: 127.0.0.1): " ip
+ip=${ip:-127.0.0.1}
+install_apache
+add_host
+install_php
+install_mariadb
+configure_virtualhost $domain
+install_wordpress $domain
+
+echo "Hoàn thành cài đặt hoàn tất!"
+echo "Để kiểm tra, chạy lệnh -> ping $domain"
