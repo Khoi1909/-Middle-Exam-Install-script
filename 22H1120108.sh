@@ -162,3 +162,4 @@ install_wordpress $domain
 
 echo "Hoàn thành cài đặt hoàn tất!"
 echo "Để kiểm tra, chạy lệnh -> ping $domain"
+echo "Hoặc mở trình duyệt và truy cập vào $domain"
