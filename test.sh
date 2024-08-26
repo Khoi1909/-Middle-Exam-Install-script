@@ -7,7 +7,13 @@ check_os() {
     elif [ -f /etc/arch-release ]; then
         OS="arch"
     elif [ -f /etc/redhat-release ]; then
-        OS="redhat"
+        if grep -q "CentOS" /etc/redhat-release; then
+            echo "CentOS không được hỗ trợ."
+            exit 1
+        else
+            OS="redhat"
+        fi
+
     else
         echo "Hệ điều hành không được hỗ trợ."
         exit 1
