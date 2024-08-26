@@ -219,4 +219,16 @@ add_ServerName() {
 # Bắt đầu script
 check_os
 read -p "Vui lòng nhập tên miền: " domain
-read -
+read -p "Vui lòng nhập địa chỉ IP (Không nhập -> mặc định: 127.0.0.1): " ip
+ip=${ip:-127.0.0.1}
+install_apache
+add_host
+install_php
+install_mariadb
+configure_virtualhost $domain
+install_wordpress $domain
+
+echo "Hoàn thành cài đặt hoàn tất!"
+echo "============================="
+echo "Để kiểm tra, chạy lệnh -> ping $domain"
+echo "Hoặc mở trình duyệt và truy cập vào $domain"
