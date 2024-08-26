@@ -14,6 +14,7 @@ check_os() {
 
 # Cài đặt Apache
 install_apache() {
+    echo "=========================="
     echo "Cài đặt Apache..."
     if [ "$OS" == "debian" ]; then
         sudo apt update
@@ -29,6 +30,7 @@ install_apache() {
 
 # Cài đặt PHP
 install_php() {
+    echo "=========================="
     echo "Cài đặt PHP..."
     if [ "$OS" == "debian" ]; then
         sudo apt install -y php libapache2-mod-php php-mysql
@@ -44,6 +46,7 @@ install_php() {
 
 # Cài đặt MariaDB/MySQL
 install_mariadb() {
+    echo "=========================="
     echo "Cài đặt MariaDB..."
     if [ "$OS" == "debian" ]; then
         sudo apt install -y mariadb-server mariadb-client
@@ -62,6 +65,7 @@ install_mariadb() {
 
 # Cấu hình Virtual Host
 configure_virtualhost() {
+    echo "=========================="
     echo "Cấu hình Virtual Host cho $1..."
     if [ "$OS" == "debian" ]; then
         sudo mkdir -p /var/www/$1/public_html
@@ -102,6 +106,7 @@ EOL
 
 # Cài đặt Wordpress
 install_wordpress() {
+    echo "=========================="
     echo "Cài đặt Wordpress cho $1..."
     if [ "$OS" == "debian" ]; then
         cd /var/www/$1/public_html
@@ -161,5 +166,6 @@ configure_virtualhost $domain
 install_wordpress $domain
 
 echo "Hoàn thành cài đặt hoàn tất!"
+echo "============================="
 echo "Để kiểm tra, chạy lệnh -> ping $domain"
 echo "Hoặc mở trình duyệt và truy cập vào $domain"
