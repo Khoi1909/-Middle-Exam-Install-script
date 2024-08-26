@@ -1,4 +1,6 @@
 Bài kiểm tra giữa kì của Nguyễn Vương Minh Khôi lớp Hệ điều hành linux UTH.
+Hiện tại chỉ hỗ trợ Debian/Arch/Redhat(CentOS không được hỗ trợ) .
+
 1. Tải và cài đặt apache2/http.
 2. Tải và cài đặt MariaDB.
 3. Tải và cài đặt PHP.
