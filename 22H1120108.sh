@@ -6,6 +6,14 @@ check_os() {
         OS="debian"
     elif [ -f /etc/arch-release ]; then
         OS="arch"
+    elif [ -f /etc/redhat-release ]; then
+        if grep -q "CentOS" /etc/redhat-release; then
+            echo "CentOS chưa được hỗ trợ."
+            exit 1
+        else
+            OS="redhat"
+        fi
+
     else
         echo "Hệ điều hành không được hỗ trợ."
         exit 1
@@ -25,6 +33,10 @@ install_apache() {
         sudo pacman -Syu --noconfirm apache
         sudo systemctl start httpd
         sudo systemctl enable httpd
+    elif [ "$OS" == "redhat" ]; then
+        sudo yum install -y httpd
+        sudo systemctl start httpd
+        sudo systemctl enable httpd
     fi
 }
 
@@ -41,6 +53,9 @@ install_php() {
         sudo sed -i 's/#LoadModule php_module/LoadModule php_module/' /etc/httpd/conf/httpd.conf
         sudo sed -i 's/#Include conf\/extra\/php_module.conf/Include conf\/extra\/php_module.conf/' /etc/httpd/conf/httpd.conf
         sudo systemctl restart httpd
+    elif [ "$OS" == "redhat" ]; then
+        sudo yum install -y php php-mysqlnd
+        sudo systemctl restart httpd
     fi
 }
 
@@ -55,6 +70,10 @@ install_mariadb() {
     elif [ "$OS" == "arch" ]; then
         sudo pacman -S --noconfirm mariadb
         sudo mysql_install_db --user=mysql --basedir=/usr --datadir=/var/lib/mysql
+        sudo systemctl start mariadb
+        sudo systemctl enable mariadb
+    elif [ "$OS" == "redhat" ]; then
+        sudo yum install -y mariadb-server mariadb
         sudo systemctl start mariadb
         sudo systemctl enable mariadb
     fi
@@ -101,6 +120,22 @@ EOL
 
         echo "Include conf/extra/$1.conf" | sudo tee -a /etc/httpd/conf/httpd.conf
         sudo systemctl restart httpd
+    elif [ "$OS" == "redhat" ]; then
+        sudo mkdir -p /var/www/$1/public_html
+        sudo chown -R $USER:$USER /var/www/$1/public_html
+
+        cat <<EOL | sudo tee /etc/httpd/conf.d/$1.conf
+<VirtualHost *:80>
+    ServerAdmin admin@$1
+    DocumentRoot "/var/www/$1/public_html"
+    ServerName $1
+    ServerAlias www.$1
+    ErrorLog "/var/log/httpd/$1-error_log"
+    CustomLog "/var/log/httpd/$1-access_log" common
+</VirtualHost>
+EOL
+
+        sudo systemctl restart httpd
     fi
 }
 
@@ -112,6 +147,8 @@ install_wordpress() {
         cd /var/www/$1/public_html
     elif [ "$OS" == "arch" ]; then
         cd /srv/http/$1/public_html
+    elif [ "$OS" == "redhat" ]; then
+        cd /var/www/$1/public_html
     fi
     wget https://wordpress.org/latest.tar.gz
     tar -xvzf latest.tar.gz --strip-components=1
@@ -139,9 +176,16 @@ add_host() {
         echo "Tên miền $domain đã được thêm vào /etc/hosts với địa chỉ IP $ip."
     fi
 }
-#Thêm ServerName vào apache2.conf
+
+#Thêm ServerName vào apache2.conf hoặc httpd.conf
 add_ServerName() {
-    apache2_conf="/etc/apache2/apache2.conf"
+    if [ "$OS" == "debian" ]; then
+        apache2_conf="/etc/apache2/apache2.conf"
+    elif [ "$OS" == "arch" ]; then
+        apache2_conf="/etc/httpd/conf/httpd.conf"
+    elif [ "$OS" == "redhat" ]; then
+        apache2_conf="/etc/httpd/conf/httpd.conf"
+    fi
 
     if grep -q "ServerName $domain" "$apache2_conf"; then
         echo "ServerName $domain đã tồn tại trong $apache2_conf."
@@ -150,9 +194,13 @@ add_ServerName() {
         echo "ServerName $domain đã được thêm vào $apache2_conf."
     fi
     
-    sudo systemctl restart apache2
-
+    if [ "$OS" == "debian" ]; then
+        sudo systemctl restart apache2
+    elif [ "$OS" == "arch" ] || [ "$OS" == "redhat" ]; then
+        sudo systemctl restart httpd
+    fi
 }
+
 # Bắt đầu script
 check_os
 read -p "Vui lòng nhập tên miền: " domain
