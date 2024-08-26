@@ -8,7 +8,7 @@ check_os() {
         OS="arch"
     elif [ -f /etc/redhat-release ]; then
         if grep -q "CentOS" /etc/redhat-release; then
-            echo "CentOS chưa được hỗ trợ."
+            echo "CentOS không được hỗ trợ."
             exit 1
         else
             OS="redhat"
@@ -155,21 +155,14 @@ install_wordpress() {
 
     echo "Tạo database cho Wordpress..."
     DB_NAME=$(echo $1 | tr . _)
-
-    read -p "Vui lòng nhập tên người dùng cho Wordpress database (mặc định: wp_user): " wp_user
-    wp_user=${wp_user:-wp_user}
-
-    read -sp "Vui lòng nhập mật khẩu cho người dùng $wp_user: " wp_password
-    echo
-
     sudo mysql -e "CREATE DATABASE ${DB_NAME};"
-    sudo mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${wp_user}'@'localhost' IDENTIFIED BY '${wp_password}';"
+    sudo mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO 'wp_user'@'localhost' IDENTIFIED BY 'yourpassword';"
     sudo mysql -e "FLUSH PRIVILEGES;"
 
     cp wp-config-sample.php wp-config.php
     sed -i "s/database_name_here/$DB_NAME/" wp-config.php
-    sed -i "s/username_here/$wp_user/" wp-config.php
-    sed -i "s/password_here/$wp_password/" wp-config.php
+    sed -i "s/username_here/wp_user/" wp-config.php
+    sed -i "s/password_here/yourpassword/" wp-config.php
 }
 
 #Thêm host vào trong /etc/hosts
