@@ -7,10 +7,8 @@ Hiện tại chỉ hỗ trợ Debian/Arch/Redhat(CentOS không được hỗ tr�
 4. Setup cấu hình Virtual Host.
 5. Cài đặt Wordpress tự đông với doimain được nhập vào.
 
-
-Trước khi cài đặt:
-Chạy lệnh $```chmod -x ./22H1120108.sh``` .
-
-Sau đó nhập lệnh  $ ```./22H1120108.sh``` hoặc ```bash ./22H1120108``` để chạy script.
+Cài đặt:
+Chỉ cần nhập lệnh ```bash ./22H1120108``` để chạy script.
+Nếu không có quyền thì hãy dùng ```chmod``` để cấp lại quyền 
 
 Sau khi script hạy xong, nhập lệnh ```ping (domain vừa nhập)``` để kiểm tra.
